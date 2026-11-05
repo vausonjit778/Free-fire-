@@ -1,3 +1,4 @@
+
 name: Build FreeFire Companion APK
 
 on:
@@ -22,21 +23,31 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
-      - name: Install Android SDK
+      - name: Find and Extract Project ZIP
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Project ZIP not found!"
+            exit 1
+          fi
+          mkdir -p project
+          unzip -o "$ZIP_FILE" -d project
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Build APK
+        working-directory: project
         run: gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FreeFire-Companion-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: project/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
