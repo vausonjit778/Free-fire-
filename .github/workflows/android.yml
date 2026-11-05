@@ -26,17 +26,39 @@ jobs:
         with:
           packages: platform-tools
 
-      - name: Find and Extract Project ZIP
+      - name: Extract Project ZIP
         run: |
           ZIP_FILE=$(find . -maxdepth 1 -name '*.zip' | head -n 1)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "Project ZIP not found!"
-            exit 1
-          fi
           mkdir -p project
           unzip -o "$ZIP_FILE" -d project
 
-      - name: Setup Gradle 8.9
+      - name: Fix Java Kotlin Compatibility
+        working-directory: project
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle.kts")
+          s = p.read_text()
+
+          s = s.replace(
+              '    defaultConfig {',
+              '''    compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {'''
+          )
+
+          p.write_text(s)
+          PY
+
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
